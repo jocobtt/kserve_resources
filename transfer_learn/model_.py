@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments
 from datasets import load_dataset
 import torch
 from torch.utils.data import DataLoader
@@ -7,7 +7,7 @@ from transformers import get_scheduler
 from tqdm.auto import tqdm
 import os
 # https://neptune.ai/blog/hugging-face-pre-trained-models-find-the-best
-# https://huggingface.co/docs/transformers/training
+# https://huggingface.co/docs/transformers/training 
 
 # load in our data 
 dataset = load_dataset("yelp_review_full")
@@ -35,9 +35,10 @@ tokenized_datasets.set_format("torch")
 train_dataloader = DataLoader(small_train_dataset, shuffle=True, batch_size=8)
 eval_dataloader = DataLoader(small_eval_dataset, batch_size=8)
 
-model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels = 5)
-# optimize model and learning rate
-optimizer = AdamW(model.paramters(), lr = 5e-5)
+model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=5)
+
+training_args = TrainingArguments(output_dir="test_trainer")
+
 
 num_epochs = 3
 num_training_steps = num_epochs * len(train_dataloader)

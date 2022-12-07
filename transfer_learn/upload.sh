@@ -1,4 +1,4 @@
 #!/bin/bash
-LOC=jacob-dev-4333
-BUCK=bucket-name
-gcloud storage cp boston_model.joblib gs://${LOC}/${BUCK}
+PROJ=jacob-dev-345806
+BUCK=kserve_modelz
+gcloud alpha storage cp boston_model.joblib gs://${BUCK}/pretrained --project ${PROJ}

@@ -1,11 +1,12 @@
 apiVersion: serving.kserve.io/v1beta1
 kind: InferenceService
 metadata:
-  name: example-sklearn-model
+  name: github-sklearn-model
+  namespace: kserve-test
 spec:
   predictor:
     model:
       modelFormat:
         name: sklearn
       protocolVersion: "v2"
-      storageUri: gcr.io/jacob-dev-345806/boston-model
+      storageUri: https://github.com/jocobtt/kserve_resources/blob/main/sklearn/boston_model.joblib?raw=true

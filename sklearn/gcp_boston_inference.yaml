@@ -1,0 +1,13 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: example-sklearn-model
+  namespace: kserve-test
+spec:
+  predictor:
+    serviceAccountName: gcp-serviceaccount # https://github.com/kserve/kserve/issues/766
+    model:
+      modelFormat:
+        name: sklearn
+      protocolVersion: "v2"
+      storageUri: gs://kserve_modelz/boston_model.joblib
