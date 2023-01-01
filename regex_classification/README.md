@@ -1,0 +1,1 @@
+https://github.com/lizzzcai/kserve-modelmesh-demo/blob/main/custom_inferenceservice.yaml

@@ -31,4 +31,5 @@ if __name__ == "__main__":
         host='http://ml-pipeline.kubeflow.svc.cluster.local:8888',
         existing_token=TOKEN)
     # create our experiment 
+    #client.create_experiment("test")
     client.create_run_from_pipeline_func(add_pipeline, arguments={"a": 2.0, "b": 3.0}, experiment_name = "test")
