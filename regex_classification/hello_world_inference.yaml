@@ -1,0 +1,12 @@
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: github-sklearn-model
+  namespace: kserve-test
+spec:
+  predictor:
+    containers:
+      - name: hello-container
+        image: hello-container:v1
+        ports:
+          - containerPort: 8080

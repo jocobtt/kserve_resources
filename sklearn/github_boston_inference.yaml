@@ -10,3 +10,5 @@ spec:
         name: sklearn
       protocolVersion: "v2"
       storageUri: https://github.com/jocobtt/kserve_resources/blob/main/sklearn/boston_model.joblib?raw=true
+
+
