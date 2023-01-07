@@ -1,17 +1,20 @@
 import kserve 
-from typing import Dict, list
+from typing import Dict
 import pickle
+
 
 class hello_world(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
+        self.load()
+        self.model = None
         self.ready = False
 
     def load(self):
         # Load your model here
         self.ready = True
-        self.model = pickle.load("hello_world.pkl") # double check this
+        self.model = pickle.load(open("hello_world.pkl", 'rb')) 
 
 
     def predict(self, request: Dict) -> Dict:
@@ -23,6 +26,4 @@ class hello_world(kserve.Model):
 if __name__ == "__main__":
     model = hello_world("hello-world")
     model.load()
-    #model.predict()
-    kserve.KServe().start([model])
-
+    kserve.ModelServer().start([model]) 

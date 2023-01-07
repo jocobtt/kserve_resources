@@ -42,6 +42,18 @@ INPUT_PATH=@./test_payload.json
 
 curl -v http://${INGRESS_HOST}:${INGRESS_PORT}/v2/models/$MODEL_NAME:predict -d $INPUT_PATH
 
+
+MODEL_NAME=github-sklearn-model
+SESSION=MTY3MjkzNDM0NXxOd3dBTkZjMFRVbFRNMVZKVjBJeVJsQlNTa1ZLU2twSVJGRlNNbEpHVUV0SFQxWTJORFJTV1VOYVIxbERTRTFIU2taU04xVlNWVkU9fKiroToOojIHZqEmksewcy0L6Qr4WTlYSU_Ojj61o1lh
+INPUT_PATH=@./test_payload.json
+CLUSTER_IP=$(kubectl -n istio-system get service istio-ingressgateway -o jsonpath='{.spec.clusterIP}')
+SERVICE_HOSTNAME=$(kubectl get -n kserve-test inferenceservice ${MODEL_NAME} -o jsonpath='{.status.url}' | cut -d "/" -f 3)
+
+# is the service ready? 
+curl -v -H "Host: ${SERVICE_HOSTNAME}" -H "Cookie: authservice_session=${SESSION}" http://${CLUSTER_IP}/v2/models/${MODEL_NAME}
+
+curl -v -H "Host: ${SERVICE_HOSTNAME}" -H "Cookie: authservice_session=${SESSION}" http://${CLUSTER_IP}/v2/models/${MODEL_NAME} -d ${INPUT_PATH}
+
 ```
 Can also potentially use the kserve command line tool to make requests - ie kserve predict to predict and kserve list to list the models that we have available. 
 
@@ -52,48 +64,13 @@ Still in the process of using hugging face/pytorch combination to train this mod
 
 
 # Custom model server work 
-Will use a local installation of kserve to test this all out. 
-
-```bash
-k3d cluster create --image rancher/k3s:v1.21.7-k3s1 --k3s-arg '--disable=traefik@server:0'  kubeflow-cluster 
-
-curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.12.1  sh -
-cd istio-1.12.1
-export PATH=$PWD/bin:$PATH
-# Installing Istio without sidecar injection
-istioctl install -y
-
-# install knative 
-# Install the required custom resources
-kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-crds.yaml
-# Install the core components of Knative Serving
-kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.6.0/serving-core.yaml
-
-# install istio networking layer 
-# Install a properly configured Istio
-kubectl apply -l knative.dev/crd-install=true -f https://github.com/knative/net-istio/releases/download/knative-v1.6.0/istio.yaml
-kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v1.6.0/istio.yaml
-# Install the Knative Istio controller
-kubectl apply -f https://github.com/knative/net-istio/releases/download/knative-v1.6.0/net-istio.yaml
-
-
-# Fetch the External IP address or CNAME
-kubectl --namespace istio-system get service istio-ingressgateway
-
-# install cert manager 
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
-
-# Install KServe
-kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.9.0/kserve.yaml
-# Install KServe Built-in ClusterServingRuntimes
-kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.9.0/kserve-runtimes.yaml
-
-```
+Essentially what you need is a container image that contains your model and a python script that will load your model and then serve it using the kserve python sdk. I reference this same concept below in the python function section below. But in this case instead of doing a hello world function or a regex function we are wanting to load a pretrained model and then serve it. 
 
 # Questions from Nick
 # auto redeploy inferencing service if there is a new storage uri - look into this if there - 3rd (see if something is out of the box)
   - kserve supports canary updates for model versions, which isn't entirely an automated process. https://github.com/kserve/kserve/issues/772
   - Seems like they are expecting a user to use gitops or some other framework for updating their model uris on that end of things but not from the kserve inferencing itself. 
+  - if we connect our kserve deploying of the models through a kubeflow pipelines that can handle updating the model uri's for us.
 
 # eventually want to call this all from jenkins to kick off the pipeline and then create the model etc. so will need to finalize connecting to the kubeflow client remotely. 
 # how does it support multitenancy? 
@@ -114,12 +91,14 @@ class hello_world(kserve.Model):
     def __init__(self, name: str):
         super().__init__(name)
         self.name = name
+        self.load()
+        self.model = None
         self.ready = False
 
     def load(self):
         # Load your model here
+        self.model = pickle.load(open("hello_world.pkl", 'rb')) 
         self.ready = True
-        self.model = pickle.load("hello_world.pkl") # double check this
 
     def predict(self, request: Dict) -> Dict:
         print('predict function called', request)
@@ -130,8 +109,7 @@ class hello_world(kserve.Model):
 if __name__ == "__main__":
     model = hello_world("hello-world")
     model.load()
-    #model.predict()
-    kserve.KServe().start([model])
+    kserve.ModelServer().start([model])
   ```
   We can then use this docker image in our kserve inference service yaml file or through the kubeflow pipeline python client like so:
 
@@ -151,8 +129,9 @@ def regex_pipeline(
     custom_model_spec= '{"name": "regex-model", "image": "regex-image:latest", "port": "5000"}'):
     kserve_op(action = action, model_name = model_name, namespace = namespace, custom_model_spec = custom_model_spec)
   ```
-
  Doc located here - https://kserve.github.io/website/modelserving/v1beta1/custom/custom_model/
+
+ Some issues that I am currently dealing with it is that the cluster has insufficient cpu for running two custom models. The custom model pods themselves arent' that large necessarily so I am hoping that this isn't an issue with kubeflow serving too many kserve pods/models at once from a resource perspective.
 
 # performance testing - k6 related stuff etc
 - There are a few ways we can accomplish this ie through k6, locust, or even just using the kserve command line tool.
